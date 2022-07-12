@@ -9,7 +9,7 @@ These random numbers are then written into a client application file in the form
 Both Linux and Mac with GCC are compatible. 
 
 ### Examples
-The code runners are in the 'examples' directory. There are two main files, 'server_example.cpp' and 'client_example.cpp'. 
+The code runners are in the 'tests' directory. There are two main files, 'server_example.cpp' and 'client_example.cpp'. 
 
 ### Thread Safe 
 The server is thread-safe, and can handle multiple clients at the same time, and remove dead clients resources automatically. 
