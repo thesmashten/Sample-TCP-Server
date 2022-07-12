@@ -222,6 +222,9 @@ EVEN_SERVER:BOOL=ON
 //Build SERVER
 SERVER_EXAMPLE:BOOL=ON
 
+//Build SERVER
+SERVER_ODD:BOOL=ON
+
 //Value Computed by CMake
 TCPServer_BINARY_DIR:STATIC=/Users/nishantjain/Desktop/TCPServer/build
 

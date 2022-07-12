@@ -24,7 +24,6 @@
 #include <fstream>
 #include <cstdlib>
 
-const int MAXCLIENTS = 5;
 class TcpServer {
 private:
     FileDescriptor _sockfd; //used to keep track of the file descriptor of the server 
@@ -35,7 +34,6 @@ private:
     std::mutex _subscribersMtx;
 
     std::thread * _clientsRemoverThread = nullptr;
-    // std::thread * _startSorting = nullptr;
     std::atomic<bool> _stopRemoveClientsTask;
     
     void startSorting(std::vector<Client*> _clients);
@@ -45,14 +43,12 @@ private:
     void clientEventHandler(const Client&, ClientEvent, const std::string &msg);
     void removeDeadClients();
     void terminateDeadClientsRemover();
-    // void terminateSortingThread();
-    static pipe_ret_t sendToClient(const Client & client, const char * msg, size_t size);
 
 public:
     TcpServer();
     ~TcpServer();
     std::mutex _clientsMtx;
-    pipe_ret_t start(int port, int maxNumOfClients = 5, bool removeDeadClientsAutomatically = true);
+    pipe_ret_t start(int port, int maxNumOfClients = 10, bool removeDeadClientsAutomatically = true);
     void initializeSocket();
     void bindAddress(int port);
     void listenToClients(int maxNumOfClients);
@@ -68,5 +64,7 @@ public:
     void sort(std::vector<Client*> _clients);
     int generateNumber(int number);
     std::vector<Client*> _clients;
+    void sortList(int ID, std::string clientFileName);
+    static pipe_ret_t sendToClient(const Client & client, const char * msg, size_t size);
 };
 

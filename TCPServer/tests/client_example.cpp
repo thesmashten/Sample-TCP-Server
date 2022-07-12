@@ -25,67 +25,156 @@ void sig_exit(int s)
 
 // observer callback. will be called for every new message received by the server
 void onIncomingMsg(const char * msg, size_t size) {
-	std::cout << "Got msg from server: " << msg << "\n";
+	std::cout << "Client # " << client->getID() << " got this unique number from the server: " << msg << "\n";
 }
+
 
 // observer callback. will be called when server disconnects
 void onDisconnection(const pipe_ret_t & ret) {
 	std::cout << "Server disconnected: " << ret.message() << "\n";
 }
 
-void printMenu() {
-    std::cout << "select one of the following options: \n" <<
-                 "1. request another unique number from server\n" <<
-                 "2. close client and exit\n";
-}
+// std::vector<TcpClient*> generateClients(){
+//     std::vector<TcpClient*> clients;
+//     client_observer_t observer;
+//     observer.wantedIP = "127.0.0.1";
+// 	observer.incomingPacketHandler = onIncomingMsg;
+// 	observer.disconnectionHandler = onDisconnection;
+// 	client->subscribe(observer);
+//     clients.push_back(client);
+//     for (int i = 0; i < 9; i++){
+//         client = new TcpClient();
+//         client_observer_t observer;
+//         observer.wantedIP = "127.0.0.1";
+// 	    observer.incomingPacketHandler = onIncomingMsg;
+// 	    observer.disconnectionHandler = onDisconnection;
+// 	    client->subscribe(observer);
+//         clients.push_back(client);
+//     }
+//     return clients; 
+// }
 
-int getMenuSelection() {
-    int selection = 0;
-    std::cin >> selection;
-    if (!std::cin) {
-        throw std::runtime_error("invalid menu input. expected a number, but got something else");
-    }
-    std::cin.ignore (std::numeric_limits<std::streamsize>::max(), '\n');
-    return selection;
-}
+// std::vector<TcpClient*> generateOdd(std::vector<TcpClient*> clients){
+//     std::vector<TcpClient*> oddClients; 
+//     for (int i = 0; i < clients.size(); i++){
+//         TcpClient* client = clients[i];
+//         if (client->getID() % 2 == 1){
+//             oddClients.push_back(client);
+//         }
+//     }
+//     return oddClients;
+// }
 
-bool handleMenuSelection(int selection) {
-    static const int minSelection = 1;
-    static const int maxSelection = 2;
-    if (selection < minSelection || selection > maxSelection) {
-        std::cout << "invalid selection: " << selection <<
-                     ". selection must be b/w " << minSelection << " and " << maxSelection << "\n";
-        return false;
-    }
-    switch (selection) {
-        case 1: { // send message to server
-            std::cout << "enter message to send:\n";
-            std::string message;
-            std::cin >> message;
-            pipe_ret_t sendRet = client->sendMsg(message.c_str(), message.size());
-            if (!sendRet.isSuccessful()) {
-                std::cout << "Failed to send message: " << sendRet.message() << "\n";
-            } else {
-                std::cout << "message was sent successfuly\n";
-            }
-            break;
-        }
-        case 2: { // close client
-            const pipe_ret_t closeResult = client->close();
-            if (!closeResult.isSuccessful()) {
-                std::cout << "closing client failed: " << closeResult.message() << "\n";
-            } else {
-                std::cout << "closed client successfully\n";
-            }
-            return true;
-        }
-        default: {
-            std::cout << "invalid selection: " << selection <<
-                      ". selection must be b/w " << minSelection << " and " << maxSelection << "\n";
-        }
-    }
-    return false;
-}
+// std::vector<TcpClient*> generateEven(std::vector<TcpClient*> clients){
+//     std::vector<TcpClient*> evenClients; 
+//     for (int i = 0; i < clients.size(); i++){
+//         TcpClient* client = clients[i];
+//         if (client->getID() % 2 == 0){
+//             evenClients.push_back(client);
+//         }
+//     }
+//     return evenClients;
+// }
+
+// void handleOddClients(std::vector<TcpClient*> oddClients) {
+//     //register to SIGINT to close client when user press ctrl+c
+//     pipe_ret_t connectRet; 
+//     client_observer_t observer;
+//     observer.wantedIP = "127.0.0.1";
+// 	observer.incomingPacketHandler = onIncomingMsg;
+// 	observer.disconnectionHandler = onDisconnection;
+//     bool connected = false;
+//     for (int i = 0; i < oddClients.size(); i++){
+//         TcpClient* client = oddClients[i];
+//         connectRet = client->connectTo(observer.wantedIP, 65123); //odd server
+//         connected = connectRet.isSuccessful();
+//         if (connected){
+//             if (i % 2 == 0){
+//                 std::cout<< "\nClient (even) has connected to the server.";
+//                 std::cout<<" Client has an ID of " << i;
+//             }
+//             else{
+//                 std::cout<<"\nClient (odd) has connected to the server.";
+//                 std::cout<<" Client has an ID of " << client->getID();
+//             }
+//             client->printMenu();
+//             int selection = client->getMenuSelection();
+//             while (selection != 2){
+//                 if (selection == 1){ //client requesting #
+//                         std::string ID = std::to_string(client->getID());
+//                         pipe_ret_t sendRet = client->sendMsg(ID.c_str(), ID.size());
+//                         if (!sendRet.isSuccessful()) {
+//                             std::cout << "\nFailed to send message: " << sendRet.message() << "\n";
+//                         } 
+//                         else {
+//                             std::cout << "\nmessage was sent successfuly\n";
+//                         }
+//                         client->printMenu();
+//                         selection = client->getMenuSelection();
+//                     }
+//             }
+//             client->close();
+//         }
+//     }
+// }
+
+
+// void handleEvenClients(std::vector<TcpClient*> evenClients) {
+//     //register to SIGINT to close client when user press ctrl+c
+//     client_observer_t observer;
+//     observer.wantedIP = "127.0.0.1";
+// 	observer.incomingPacketHandler = onIncomingMsg;
+// 	observer.disconnectionHandler = onDisconnection;
+//     pipe_ret_t connectRet; 
+//     bool connected = false;
+//     for (int i = 0; i < evenClients.size(); i++){
+//         TcpClient* client = evenClients[i];
+//         connectRet = client->connectTo(observer.wantedIP, 65123); //odd server
+//         connected = connectRet.isSuccessful();
+//         if (connected){
+//             if (i % 2 == 0){
+//                 std::cout<< "\nClient (even) has connected to the server.";
+//                 std::cout<<" Client has an ID of " << client->getID();
+//             }
+//             else{
+//                 std::cout<<"\nClient (odd) has connected to the server.";
+//                 std::cout<<"\nClient has an ID of " << client->getID();
+//             }
+//             client->printMenu();
+//             int selection = client->getMenuSelection();
+//             while (selection != 2){
+//                 if (selection == 1){ //client requesting #
+//                         std::string ID = std::to_string(client->getID());
+//                         pipe_ret_t sendRet = client->sendMsg(ID.c_str(), ID.size());
+//                         if (!sendRet.isSuccessful()) {
+//                             std::cout << "\nFailed to send message: " << sendRet.message() << "\n";
+//                         } 
+//                         else {
+//                             std::cout << "\nmessage was sent successfuly\n";
+//                         }
+//                         client->printMenu();
+//                         selection = client->getMenuSelection();
+//                     }
+//                 client->close();
+//             }
+//         }
+//     }
+// }
+
+// int main() {
+//     //register to SIGINT to close client when user press ctrl+c
+// 	signal(SIGINT, sig_exit);
+//     std::vector<TcpClient*> clients = generateClients();
+//     std::vector<TcpClient*> oddClients = generateOdd(clients);
+//     std::vector<TcpClient*> evenClients = generateEven(clients);
+//     std::thread even(handleEvenClients, evenClients);
+//     std::thread odd(handleOddClients, oddClients);
+//     even.join();
+//     odd.join();
+//     return 0;
+// }
+
+
 
 int main() {
     //register to SIGINT to close client when user press ctrl+c
@@ -93,37 +182,42 @@ int main() {
 
     // configure and register observer
     client_observer_t observer;
-	observer.wantedIP = "0.0.0.0";
+	observer.wantedIP = "127.0.0.1";
 	observer.incomingPacketHandler = onIncomingMsg;
 	observer.disconnectionHandler = onDisconnection;
-	client->subscribe(observer);
-
-	// connect 5 client to even server
+	client->subscribe(observer); //for the first client subscribe to observer to display messages from server
+    pipe_ret_t connectRet; 
 	bool connected = false;
-    for (int i = 0; i < 5; i++){
-        pipe_ret_t connectRet = client->connectTo(observer.wantedIP, 65123);
+    for (int i = 0; i < 10; i++){
+        connectRet = client->connectTo(observer.wantedIP, 65123); //odd server
         connected = connectRet.isSuccessful();
-        std::cout << "Client connected successfully\n";
-        std::cout<<"Client ID is"<<client->getID()<<"\n";
-        printMenu();
-        int selection = getMenuSelection();
+        if (connected){
+            if (client->getID() % 2 == 0){
+                std::cout<<"\nEven Client with ID: " << client->getID() << " connected successfully.";
+            }
+            else{
+                std::cout<<"\nOdd Client with ID: " << client->getID() << " connected successfully.";
+            }
+        }
+        client->printMenu();
+        int selection = client->getMenuSelection();
         while (selection != 2){
             if (selection == 1){ //client requesting #
                     std::string ID = std::to_string(client->getID());
                     pipe_ret_t sendRet = client->sendMsg(ID.c_str(), ID.size());
                     if (!sendRet.isSuccessful()) {
-                        std::cout << "Failed to send message: " << sendRet.message() << "\n";
+                        std::cout << "\nFailed to send message: " << sendRet.message() << "\n";
                     } 
                     else {
-                        std::cout << "message was sent successfuly\n";
+                        std::cout << "\nRequest for a new number was sent successfuly\n";
                     }
-                    printMenu();
-                    selection = getMenuSelection();
                 }
+            client->printMenu();
+            selection = client->getMenuSelection();
         }
         client = new TcpClient();
         client_observer_t observer;
-	    observer.wantedIP = "0.0.0.0";
+	    observer.wantedIP = "127.0.0.1";
 	    observer.incomingPacketHandler = onIncomingMsg;
 	    observer.disconnectionHandler = onDisconnection;
 	    client->subscribe(observer);
@@ -132,3 +226,4 @@ int main() {
 }
 
 #endif
+

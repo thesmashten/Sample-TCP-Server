@@ -6,8 +6,8 @@
 
 
 TcpServer::TcpServer() {
-    _subscribers.reserve(10);
-    _clients.reserve(10);
+    _subscribers.reserve(20);
+    _clients.reserve(20);
     _stopRemoveClientsTask = false;
 }
 
@@ -15,6 +15,12 @@ TcpServer::~TcpServer() {
     close();
 }
 
+
+/**
+ * Observers register with the provider. 
+ * Whenever a predefined condition, event, or state change occurs, 
+ * the provider automatically notifies all observers by calling one of their methods. 
+ */
 void TcpServer::subscribe(const server_observer_t & observer) {
     std::lock_guard<std::mutex> lock(_subscribersMtx);
     _subscribers.push_back(observer);
@@ -31,6 +37,36 @@ void TcpServer::printClients() {
     for (const Client *client : _clients) {
         client->print();
     }
+}
+
+/*
+ * Sort the Linked List of a specific client. Write this to their appropriate file. 
+ */
+void TcpServer::sortList(int ID, std::string clientFileName){
+   Client* client = _clients[ID];
+   Node* head = client->head;
+   if (head == nullptr || head->next == nullptr){
+       return;
+   }
+   for (head; head->next != nullptr; head = head->next){ //this code sorts the L.L of cliet
+       for (Node* sel = head->next; sel != nullptr; sel = sel->next){
+           if (head->data > sel->data){
+                std::swap(head->data, sel->data);
+               }
+           }
+    }
+   client = _clients[ID]; //get the client object again for proper head node access
+   head = client->head;
+   std::ofstream clientFile;
+   clientFile.open(clientFileName);
+   while (head->next != nullptr){ //open, write the sorted L.L to client's file, and close it 
+       clientFile << head->data << "->";
+       head = head->next;
+   }
+   if (head != nullptr){
+       clientFile << head->data;
+   }
+    clientFile.close();
 }
 
 /**
@@ -57,10 +93,13 @@ void TcpServer::removeDeadClients() {
     }
 }
 
+/**
+ * Terminate dead client remover thread. 
+ */
 void TcpServer::terminateDeadClientsRemover() {
     if (_clientsRemoverThread) {
         _stopRemoveClientsTask = true;
-        _clientsRemoverThread->join();
+        _clientsRemoverThread->join(); //terminates dead client remover thread 
         delete _clientsRemoverThread;
         _clientsRemoverThread = nullptr;
     }
@@ -95,8 +134,8 @@ void TcpServer::publishClientMsg(const Client & client, const char * msg, size_t
 
     for (const server_observer_t& subscriber : _subscribers) {
         if (subscriber.wantedIP == client.getIp() || subscriber.wantedIP.empty()) {
-            if (subscriber.incomingPacketHandler) {
-                subscriber.incomingPacketHandler(client.getIp(), msg, msgSize);
+            if (subscriber.incomingPacketHandler) { //checks to make sure the server has a packet handler
+                subscriber.incomingPacketHandler(client.getIp(), msg, msgSize); //sends the client message to the handler
             }
         }
     }
@@ -121,8 +160,8 @@ void TcpServer::publishClientDisconnected(const std::string &clientIP, const std
 }
 
 /*
- * Bind port and start listening
- * Return tcp_ret_t
+ * Bind port at port number given and start listening to 'maxNumofClients' clients. 
+ * Returns whether the server was successfully binded to port/socket.
  */
 pipe_ret_t TcpServer::start(int port, int maxNumOfClients, bool removeDeadClientsAutomatically) {
     if (removeDeadClientsAutomatically) {
@@ -173,8 +212,8 @@ void TcpServer::bindAddress(int port) {
 }
 
 /*
- * The listen() function applies only to stream sockets. It indicates a readiness to accept client connection requests.
- * This function also creates a connection request queue of length 'maxNumOfClients' to queue incoming connection requests.
+ * The listen() function indicates a readiness to accept client connection requests.
+ * This function also creates a connection request queue of length 'maxNumOfClients' to queue incoming clients.
  */
 void TcpServer::listenToClients(int maxNumOfClients) {
     const int clientsQueueSize = maxNumOfClients;
@@ -187,9 +226,6 @@ void TcpServer::listenToClients(int maxNumOfClients) {
 /*
  * Accept and handle new client socket. To handle multiple clients, user must
  * call this function in a loop to enable the acceptance of more than one.
- * If timeout argument equal 0, this function is executed in blocking mode.
- * If timeout argument is > 0 then this function is executed in non-blocking
- * mode (async) and will quit after timeout seconds if no client tried to connect.
  * Return accepted client IP, or throw error if failed
  */
 Client* TcpServer::acceptClient(uint timeout) {
@@ -205,7 +241,7 @@ Client* TcpServer::acceptClient(uint timeout) {
     if (acceptFailed) {
         throw std::runtime_error(strerror(errno));
     }
-    auto newClient = new Client(fileDescriptor);
+    auto newClient = new Client(fileDescriptor); //create a new client given the file descriptor 
     newClient->setIp(inet_ntoa(_clientAddress.sin_addr));
     using namespace std::placeholders;
     newClient->setEventsHandler(std::bind(&TcpServer::clientEventHandler, this, _1, _2, _3));
@@ -213,38 +249,8 @@ Client* TcpServer::acceptClient(uint timeout) {
     std::lock_guard<std::mutex> lock(_clientsMtx);
     _clients.push_back(newClient);
     numClientsConnected++;
-    // startSorting(_clients);
     return newClient;
 }
-
-// void TcpServer::startSorting(std::vector<Client*> _clients) {
-//     _startSorting = new std::thread(&TcpServer::sort, _clients);
-// }
-
-void TcpServer::sort(std::vector<Client*> _clients){
-    usleep(10000);
-    for (Client* c : _clients){
-        Node* head = c->head;
-        if (head == nullptr || head->next == nullptr){
-            continue;
-        }
-        for (head; head->next != nullptr; head = head->next){
-            for (Node* sel = head->next; sel != nullptr; sel = sel->next){
-                if (head->data > sel->data){
-                    std::swap(head->data, sel->data);
-                }
-            }
-        }
-    }
-}
-
-// void TcpServer::terminateSortingThread(){
-//     if (_startSorting) {
-//         _startSorting->join();
-//         delete _startSorting;
-//         _startSorting = nullptr;
-//     }
-// }
 
 
 /*
@@ -284,15 +290,23 @@ pipe_ret_t TcpServer::sendToAllClients(const char * msg, size_t size) {
     return pipe_ret_t::success();
 }
 
+/*
+ * Generates random even number and adds it to client's linked list 
+ */
 int TcpServer::generateNumber(int ID){
     Client* client = _clients[ID];
     bool repeat = true;
     int number;
     while (repeat){
-        number = 0 + (rand() % 50) * 2;
+        if (ID % 2 == 0){
+            number = 0 + (rand() % 50) * 2; //if client ID is even, generate even #
+        }
+        else{
+            number = 0 + (rand() % 50) * 2 + 1; //if client ID is odd, generate odd #
+        }
         if (std::count(numbers.begin(), numbers.end(), number)){}
         else{
-            Node* node = new Node();
+            Node* node = new Node(); //prepare new Node for incoming new number
             node->data = number;
             node->next = nullptr;
             if (client->head == nullptr){
@@ -304,13 +318,13 @@ int TcpServer::generateNumber(int ID){
                 while (tmp->next != nullptr){
                     tmp = tmp->next;
                 }
-                tmp->next = node;
+                tmp->next = node; //add node to the linked list of this particular client 
             }
-            numbers.push_back(number);
+            numbers.push_back(number); //append number generated to hashset to prevent repeated use 
             repeat = false;
         }
     }
-    return number;
+    return number; 
 }
 
 /*
@@ -329,11 +343,6 @@ pipe_ret_t TcpServer::sendToClient(const Client & client, const char * msg, size
 
 pipe_ret_t TcpServer::sendToClient(const std::string & clientIP, const char * msg, size_t size) {
     std::lock_guard<std::mutex> lock(_clientsMtx);
-    // Client* client;
-
-    // for (Client* c : _clients){
-    //     if (c->getIp() == clientIP && c->_sockfd.get() == _sockfd
-    // }
     const auto clientIter = std::find_if(_clients.begin(), _clients.end(),
          [&clientIP](Client *client) { return client->getIp() == clientIP; });
 

@@ -58,5 +58,7 @@ public:
         struct Node* next;
     };
     Node* head = NULL;
+    int getMenuSelection();
+    void printMenu();
 };
 

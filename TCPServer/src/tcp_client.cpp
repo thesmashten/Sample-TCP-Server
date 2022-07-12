@@ -3,16 +3,44 @@
 
 int TcpClient::numClients;
 
+/*
+ * Constructor for a client terminal (taking and receiving input). 
+ */
 TcpClient::TcpClient() {
     _isConnected = false;
     _isClosed = true;
     id = numClients++;
 }
 
+/*
+ * Destructor for a TCP client on terminal. 
+ */
 TcpClient::~TcpClient() {
     close();
 }
- 
+
+/*
+ * Returns selected menu option for a client on terminal. 
+ */
+int TcpClient::getMenuSelection() {
+    int selection = 0;
+    std::cin >> selection;
+    if (!std::cin) {
+        throw std::runtime_error("invalid menu input. expected a number, but got something else");
+    }
+    std::cin.ignore (std::numeric_limits<std::streamsize>::max(), '\n');
+    return selection;
+}
+
+/*
+ * Print menu options for a client on terminal. 
+ */
+void TcpClient::printMenu() {
+    std::cout << "\n\nDear Client, please choose one of the following options: \n" <<
+                 "1. Request another unique number from server\n" <<
+                 "2. Close connection to server and exit\n";
+}
+
 /*
  * Connect client socket to server 
  */
@@ -81,9 +109,7 @@ void TcpClient::setAddress(const std::string& address, int port) {
 /*
  * Uses the send function, which initiates transmission of a message from the specified socket to its peer. 
  * Sends message from client to server. 
- * First, client needs to send the date. 
  * Then, client needs to request a number.
- * Then, a client needs to request printing the linked list. 
  */
 pipe_ret_t TcpClient::sendMsg(const char * msg, size_t size) {
     const size_t numBytesSent = send(_sockfd.get(), msg, size, 0);
